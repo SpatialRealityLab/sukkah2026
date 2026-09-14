@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <title>Sukkah AR</title>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #111;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body { overflow: hidden; }
+    model-viewer {
+      width: 100%;
+      height: 100dvh;
+      min-height: 100vh;
+      background: #ece9e2;
+      --poster-color: #ece9e2;
+    }
+    .ar-button {
+      appearance: none;
+      position: absolute;
+      left: 50%;
+      bottom: max(92px, calc(env(safe-area-inset-bottom) + 68px));
+      transform: translateX(-50%);
+      z-index: 10;
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 22px;
+      background: #fff;
+      color: #111;
+      font: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      box-shadow: 0 3px 18px rgba(0,0,0,.28);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .loading {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: max(154px, calc(env(safe-area-inset-bottom) + 130px));
+      text-align: center;
+      color: #333;
+      font-size: 14px;
+      pointer-events: none;
+      z-index: 9;
+    }
+    .status {
+      position: absolute;
+      top: max(12px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      max-width: calc(100% - 32px);
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: rgba(0,0,0,.72);
+      color: #fff;
+      font-size: 13px;
+      line-height: 1.35;
+      text-align: center;
+      display: none;
+    }
+    .status.show { display: block; }
+    .progress {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 4px;
+      background: rgba(0,0,0,.12);
+      overflow: hidden;
+    }
+    .progress > div {
+      width: 0%;
+      height: 100%;
+      background: currentColor;
+      transition: width .15s linear;
+    }
+  </style>
+</head>
+<body>
+  <model-viewer
+    id="viewer"
+    src="sukkah.glb"
+    alt="A full-size sukkah"
+    camera-controls
+    touch-action="pan-y"
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    ar-placement="floor"
+    ar-scale="fixed"
+    ar-usdz-max-texture-size="1024"
+    shadow-intensity="1"
+    shadow-softness="0.8"
+    exposure="1"
+    environment-image="neutral">
+
+    <button slot="ar-button" class="ar-button" id="arButton">View in your room</button>
+    <div slot="progress-bar" class="progress"><div id="bar"></div></div>
+  </model-viewer>
+
+  <div class="loading" id="loading">Loading 3D model…</div>
+  <div class="status" id="status"></div>
+
+  <script>
+    const viewer = document.getElementById('viewer');
+    const status = document.getElementById('status');
+    const loading = document.getElementById('loading');
+    const bar = document.getElementById('bar');
+
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    function showStatus(message, timeout = 0) {
+      status.textContent = message;
+      status.classList.add('show');
+      if (timeout) setTimeout(() => status.classList.remove('show'), timeout);
+    }
+
+    viewer.addEventListener('progress', (event) => {
+      const p = Math.round((event.detail.totalProgress || 0) * 100);
+      bar.style.width = p + '%';
+      loading.textContent = `Loading 3D model… ${p}%`;
+    });
+
+    viewer.addEventListener('load', () => {
+      loading.style.display = 'none';
+      bar.style.width = '100%';
+      setTimeout(() => bar.parentElement.style.display = 'none', 300);
+      if (isIOS) {
+        showStatus('Open this page in Safari. After the model finishes loading, tap “View in your room” to open Apple AR Quick Look.', 7000);
+      } else {
+        showStatus('After the model finishes loading, tap “View in your room” to place it on the floor.', 4500);
+      }
+    });
+
+    viewer.addEventListener('error', () => {
+      showStatus('The 3D model could not be loaded. Reload the page and make sure you have a stable connection.');
+    });
+
+    viewer.addEventListener('ar-status', (event) => {
+      if (event.detail.status === 'failed') {
+        if (isIOS) {
+          showStatus('Apple AR could not start. Make sure you are using Safari, wait for the model to reach 100%, then try again.');
+        } else {
+          showStatus('AR could not start on this device. Check camera permission and Google Play Services for AR.');
+        }
+      }
+    });
+  </script>
+</body>
+</html>
